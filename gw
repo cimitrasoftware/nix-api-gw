@@ -1,0 +1,117 @@
+#!/bin/bash
+###########################################
+# gw                                  #
+# Author: Tay Kratzer - tay@cimitra.com   #
+# Version: 1.0                            #
+# Modify date: 4/24/2020                  #
+###########################################
+# Cimitra GroupWise Integration Setup Tool
+
+
+# See if a CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY is defined in an environment variable
+if [[ -z "${CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY}" ]] 
+then
+CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY="/var/opt/cimitra/scripts/groupwise-master/helpdesk"
+fi
+
+
+declare -i SHOW_HELP=0
+
+while getopts "hs:" opt; do
+  case ${opt} in
+    s) CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY="$OPTARG"
+	;;
+    h) SHOW_HELP="1"
+      ;;
+  esac
+done
+
+FIRST_INPUT="$1"
+
+if [ ${FIRST_INPUT} = 'help' ] 1> /dev/null 2> /dev/null
+then
+SHOW_HELP="1"
+fi
+
+if [ -t 0 ]
+then
+:
+else
+echo "ERROR:This script is meant to be run in a terminal session"
+exit 1
+fi
+
+
+function SHOW_HELP()
+{
+echo ""
+echo $"Usage: cimitra gw {update|help}"
+echo ""
+}
+
+if [ $SHOW_HELP -eq 1 ]
+then
+SHOW_HELP
+exit 0
+fi
+
+function UPDATE()
+{
+cd /tmp
+curl -LJO https://raw.githubusercontent.com/cimitrasoftware/groupwise/master/install -o ./ ; chmod +x ./install ; ./install -s
+exit 0
+}
+
+function LOOK_FOR_GW_SCRIPTS_DIR()
+{
+declare -i CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY_EXISTS=`test -d ${CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY} ; echo $?`
+
+if [ $CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY_EXISTS -ne 0 ]
+then
+cd /tmp
+curl -LJO https://raw.githubusercontent.com/cimitrasoftware/groupwise/master/install -o ./ ; chmod +x ./install ; ./install
+fi
+
+declare -i CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY_EXISTS=`test -d ${CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY} ; echo $?`
+
+if [ $CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY_EXISTS -ne 0 ]
+then
+echo "ERROR: Directory ${CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY} does not exist"
+exit 1
+fi
+}
+
+function LAUNCH_GW_SETUP()
+{
+
+SETUP_SCRIPT="${CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY}/setup.sh"
+
+declare -i SETUP_SCRIPT_EXISTS=`test -f ${SETUP_SCRIPT} ; echo $?`
+
+if [ $SETUP_SCRIPT_EXISTS -ne 0 ]
+then
+echo "ERROR: The script file ${SETUP_SCRIPT} does not exist"
+exit 1
+fi
+
+cd ${CIMITRA_GROUPWISE_SCRIPTS_DIRECTORY}
+
+./setup.sh
+
+}
+
+
+case "$1" in
+	update)
+	UPDATE
+	;;
+    help)
+	SHOW_HELP
+	;;
+    *)
+	LOOK_FOR_GW_SCRIPTS_DIR
+	LAUNCH_GW_SETUP
+	;;
+esac
+
+
